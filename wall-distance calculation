@@ -1,0 +1,62 @@
+#define USE_UDM 0
+
+#include "udf.h"
+#include "prox.h"
+
+void
+cpySVartoUDM(Domain *domain, Svar sv, int udm)
+{
+    size_t realsize = sizeof(real);
+    real *svpointr = NULL;
+    real *udmpoint = NULL;
+    Thread *thread = NULL;
+    Domain *supdom = DOMAIN_SUPER_DOMAIN(domain);
+  if (NULLP(supdom))
+  {
+    supdom = domain;
+  }
+
+if (sg_udm <= udm)
+  {
+    Error("cpySVartoUDM(): too few User Defined Memory Locations.n"
+    "Location %d was requested, but there are only %d allocated.n",
+    udm, sg_udm);
+  }
+
+    thread_loop_c(thread, domain)
+  {
+    Thread *supthr = THREAD_SUPER_THREAD(thread);
+    if (NULLP(supthr))
+    {
+    supthr = thread;
+    }
+
+    if (NNULLP(svpointr = THREAD_STORAGE(thread, sv)) &&
+    (NNULLP(THREAD_STORAGE(supthr, SV_UDM_I)) ?
+    NNULLP(udmpoint = T_STORAGE_R_XV(supthr, SV_UDM_I, udm)) : FALSE))
+  {
+    int numbytes = realsize * thread->nelements;
+    memcpy(udmpoint, svpointr, numbytes);
+  }
+    }
+}
+
+DEFINE_ON_DEMAND(ondmd_cwdtoudm0)
+{
+    Domain *dom = Get_Domain(1);
+    Thread *thr = NULL;
+    Alloc_Storage_Vars(dom, SV_RTMP_0, SV_NULL);
+    Calc_Cell_Wall_Distance(dom, SV_RTMP_0);
+    cpySVartoUDM(dom, SV_RTMP_0, USE_UDM);
+    Free_Storage_Vars(dom, SV_RTMP_0, SV_NULL);
+}
+
+DEFINE_ON_DEMAND(ondmd_acwdtoudm0)
+{
+    Domain *dom = Get_Domain(1);
+    Thread *thr = NULL;
+    Alloc_Storage_Vars(dom, SV_RTMP_0, SV_NULL);
+    Calc_Cell_Wall_Distance_Alternative(dom, SV_RTMP_0);
+    cpySVartoUDM(dom, SV_RTMP_0, USE_UDM);
+    Free_Storage_Vars(dom, SV_RTMP_0, SV_NULL);
+}
